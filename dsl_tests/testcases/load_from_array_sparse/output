@@ -1,0 +1,6 @@
+/*|*/ /*empty*/
+/*|*/ /*empty*/
+/*|*/ JsonSparseElemEntry DSL_aux_1_[] = { {0, NULL, NULL}, {1, NULL, NULL}, {5, NULL, NULL}, {10, NULL, NULL}, }; $json_parse_array_elems_sparse$(A.begin, A.end, DSL_aux_1_, 4);$[PH] JsonSpan p = json_span_from_seentry(DSL_aux_1_[0]); JsonSpan q = json_span_from_seentry(DSL_aux_1_[1]); JsonSpan s = json_span_from_seentry(DSL_aux_1_[2]); JsonSpan r = json_span_from_seentry(DSL_aux_1_[3]);
+/*|*/ /*empty*/
+/*|*/ /*empty*/
+/*|*/ /*empty*/

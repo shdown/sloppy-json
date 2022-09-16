@@ -1,0 +1,2 @@
+/*|*/ /*empty*/
+/*|*/ JsonFieldEntry DSL_aux_2_[] = { JSON_FENTRY("key"), }; $json_parse_dict_fields$(D.begin, D.end, DSL_aux_2_, 1);$[PEH] JsonSpan DSL_aux_1_ = json_span_from_fentry(DSL_aux_2_[0]); DSL_VMACRO_INT(i, DSL_aux_1_)

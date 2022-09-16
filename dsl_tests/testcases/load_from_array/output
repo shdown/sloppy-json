@@ -1,0 +1,5 @@
+/*|*/ /*empty*/
+/*|*/ JsonElemEntry DSL_aux_1_[11] = {0}; $json_parse_array_elems$(A.begin, A.end, DSL_aux_1_, 11);$[PH] JsonSpan p = json_span_from_eentry(DSL_aux_1_[0]); JsonSpan q = json_span_from_eentry(DSL_aux_1_[1]); JsonSpan r = json_span_from_eentry(DSL_aux_1_[10]); JsonSpan s = json_span_from_eentry(DSL_aux_1_[5]);
+/*|*/ /*empty*/
+/*|*/ /*empty*/
+/*|*/ /*empty*/

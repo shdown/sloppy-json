@@ -1,0 +1,19 @@
+$$$ turn off VH $$$
+| !handler global push goto fail_1;
+| &a
+$$$ declared a $$$
+| !handler global push goto fail_2;
+| b = a[0]
+$$$ declared b $$$
+| !handler global push goto fail_3;
+| c = b[0]
+$$$ declared c $$$
+| !handler global pop
+| d = c[0]
+$$$ declared d $$$
+| !handler global pop
+| e = d[0]
+$$$ declared e $$$
+| !handler global pop
+| f = e[0]
+$$$ declared f $$$

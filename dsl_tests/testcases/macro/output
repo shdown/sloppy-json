@@ -1,0 +1,5 @@
+/*|*/ DSL_VMACRO_FOO(quiz, bar)
+/*|*/ DSL_VMACRO_BAR(a, "one", 64, abacaba)
+/*|*/ DSL_MACRO_DO_SOMETHING()
+/*|*/ DSL_MACRO_DO_SOMETHING_COOL(42)
+/*|*/ DSL_VMACRO__ABCDEFG_(_Xy, ___)

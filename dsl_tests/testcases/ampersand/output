@@ -1,0 +1,2 @@
+/*|*/ /*empty*/
+/*|*/ JsonFieldEntry DSL_aux_1_[] = { JSON_FENTRY("field"), }; $json_parse_dict_fields$(D.begin, D.end, DSL_aux_1_, 1);$[PEH] JsonSpan E = json_span_from_fentry(DSL_aux_1_[0]);

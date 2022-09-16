@@ -1,0 +1,5 @@
+| D = &(data, data + ndata)
+| !for K, V in D {
+    PRINT_SPAN(K);
+    PRINT_SPAN(V);
+| }

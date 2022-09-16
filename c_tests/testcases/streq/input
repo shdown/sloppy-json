@@ -1,0 +1,3 @@
+| D = &(data, data + ndata)
+| v = D['key']
+CHECK(json_span_streq(v, "value"));

@@ -1,0 +1,13 @@
+(void) data;
+(void) ndata;
+
+#define CHECK_SKIP_WS(S_, R_) \
+    do { \
+        const char *s = (S_); \
+        CHECK(json_skip_ws(s, s + strlen(s)) == s + (R_)); \
+    } while (0)
+
+CHECK_SKIP_WS(" \t    {}", 6);
+CHECK_SKIP_WS("", 0);
+CHECK_SKIP_WS(" ", 1);
+CHECK_SKIP_WS("[]", 0);

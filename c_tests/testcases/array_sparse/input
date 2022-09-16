@@ -1,0 +1,17 @@
+| A = &(data, data + ndata)
+
+| a2 = A[2]
+| a1 = A[1]
+| a4x = A[4]
+| a8 = A[8]
+| a16 = A[16]
+| a4y = A[4]
+| a32 = A[32]
+
+PRINT_SPAN(a2);
+PRINT_SPAN(a1);
+PRINT_SPAN(a4x);
+PRINT_SPAN(a8);
+PRINT_SPAN(a16);
+PRINT_SPAN(a4y);
+PRINT_SPAN(a32);

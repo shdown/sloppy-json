@@ -1,0 +1,20 @@
+| P = &(data, data + ndata)
+| P1 = P['@']
+| P2 = P['Ω']
+| P3 = P['L']
+| P4 = P['\\n']
+PRINT_SPAN(P1);
+PRINT_SPAN(P2);
+PRINT_SPAN(P3);
+PRINT_SPAN(P4);
+
+| Q = &(data, data + ndata)
+| !exact for Q set yes
+| Q1 = Q['@']
+| Q2 = Q['Ω']
+| Q3 = Q['L']
+| Q4 = Q['\n']
+PRINT_SPAN(Q1);
+PRINT_SPAN(Q2);
+PRINT_SPAN(Q3);
+PRINT_SPAN(Q4);

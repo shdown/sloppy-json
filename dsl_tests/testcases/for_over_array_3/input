@@ -1,0 +1,6 @@
+| &A
+$$$ declared A $$$
+| !for E in A
+{
+    do_something_with(E);
+}

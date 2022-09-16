@@ -1,0 +1,5 @@
+/*|*/ /*empty*/
+/*|*/ for (JsonSpan K = {0}, V = {0}; $json_dict_next$(D, &K, &V)$[P] > 0;)
+/*|*/ {
+    do_something_with(K, V);
+/*|*/ }

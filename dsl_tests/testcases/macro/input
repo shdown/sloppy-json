@@ -1,0 +1,5 @@
+| quiz = @foo(bar)
+| a = @bar("one", 64, abacaba)
+| @do_something()
+| @do_something_cool(42)
+| _Xy = @_AbCdEfG_(___)

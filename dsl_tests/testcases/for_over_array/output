@@ -1,0 +1,4 @@
+/*|*/ /*empty*/
+/*|*/ for (JsonSpan E = {0}; $json_array_next$(A, &E)$[P] > 0;){
+    do_something_with(E);
+/*|*/ }

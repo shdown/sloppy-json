@@ -1,0 +1,4 @@
+/*|*/ /*empty*/
+/*|*/ preempt_yield(&preempt);
+/*|*/ preempt_maybe_yield(&preempt);
+/*|*/ preempt_maybe_yield_n(&preempt, 35);

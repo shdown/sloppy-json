@@ -1,0 +1,2 @@
+/*|*/ JsonSpan A = B;
+/*|*/ JsonSpan C = {ptr1, ptr2};

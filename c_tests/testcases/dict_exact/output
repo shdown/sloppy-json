@@ -1,0 +1,8 @@
+P1 = <<>>
+P2 = <<>>
+P3 = <<"ell">>
+P4 = <<"new_line">>
+Q1 = <<"at_sign">>
+Q2 = <<"omega">>
+Q3 = <<"ell">>
+Q4 = <<"new_line">>

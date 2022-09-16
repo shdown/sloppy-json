@@ -1,0 +1,12 @@
+(void) data;
+(void) ndata;
+
+const char *s = "123\n456\\789\"Ш";
+
+CHECK(json_esc_nextra(s, strlen(s)) == 3);
+
+char buf[1024];
+size_t n = json_esc(s, strlen(s), buf);
+CHECK(n == strlen(s) + 3);
+buf[n] = '\0';
+CHECK(strcmp(buf, "123\\n456\\\\789\\\"Ш") == 0);

@@ -1,0 +1,5 @@
+| D = &(data, data + ndata)
+| k = D['key']
+| k2 = D['key2']
+PRINT_SPAN(k);
+PRINT_SPAN(k2);

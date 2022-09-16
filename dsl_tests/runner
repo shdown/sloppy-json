@@ -1,0 +1,209 @@
+#!/usr/bin/env bash
+
+shopt -s nullglob
+
+ME=$(readlink -- "$0" || printf '%s\n' "$0") || exit $?
+MY_DIR=$(dirname -- "$ME") || exit $?
+
+DSL=$MY_DIR/../dsl
+PREPROC=$MY_DIR/preproc
+TESTCASES_DIR=$MY_DIR/testcases
+
+TEMP_INPUT_FILE=
+TEMP_OUTPUT_FILE=
+TEMP_EXPECT_OUTPUT_FILE=
+trap '
+    rm -f -- "$TEMP_INPUT_FILE" "$TEMP_OUTPUT_FILE" "$TEMP_EXPECT_OUTPUT_FILE"
+    ' EXIT
+TEMP_INPUT_FILE=$(mktemp) || exit $?
+TEMP_OUTPUT_FILE=$(mktemp) || exit $?
+TEMP_EXPECT_OUTPUT_FILE=$(mktemp) || exit $?
+
+: ${CONTINUE_ON_FAIL:=0}
+CNT_FAIL=0
+CNT_SKIP=0
+CNT_PASS=0
+
+report_test_result() {
+    local res=$1
+    local tc=$2
+    local msg=$3
+
+    if [[ $res == FAIL ]]; then
+        echo >&2 "---"
+        echo >&2 "Testcase '$tc' failed: $msg"
+        echo >&2 "---"
+        if (( ! CONTINUE_ON_FAIL )); then
+            exit 1
+        fi
+        (( ++CNT_FAIL ))
+    elif [[ $res == SKIP ]]; then
+        echo >&2 "* Testcase '$tc' skipped"
+        (( ++CNT_SKIP ))
+    elif [[ $res == PASS ]]; then
+        echo >&2 "* Testcase '$tc' passed"
+        (( ++CNT_PASS ))
+    else
+        echo >&2 "report_test_result: unknown status '$res'."
+        exit 1
+    fi
+}
+
+typeset -a preproc_args=()
+
+pattern_to_str_preempt() {
+    local pfx=$1
+    local i=$2
+    local pat=$3
+    local x=${pat:i:1}
+    case "$x" in
+    -)
+        preproc_args+=("${pfx}P=-")
+        ;;
+    +)
+        preproc_args+=("${pfx}P=&preempt")
+        ;;
+    D)
+        ;;
+    esac
+}
+
+pattern_to_str_exact() {
+    local pfx=$1
+    local i=$2
+    local pat=$3
+    local x=${pat:i:1}
+    case "$x" in
+    -)
+        preproc_args+=("${pfx}E=no")
+        ;;
+    +)
+        preproc_args+=("${pfx}E=yes")
+        ;;
+    D)
+        ;;
+    esac
+}
+
+pattern_to_str_handler() {
+    local pfx=$1
+    local i=$2
+    local pat=$3
+    local x=${pat:i:1}
+    case "$x" in
+    -)
+        preproc_args+=("${pfx}H=-")
+        ;;
+    +)
+        preproc_args+=("${pfx}H=goto fail;")
+        ;;
+    D)
+        ;;
+    esac
+}
+
+do_perform_test_for_patterns() {
+    local tc_dir=$1
+    local pat_p=$2
+    local pat_e=$3
+    local pat_h=$4
+    local full_testcase_name="$tc_dir [$pat_p] [$pat_e] [$pat_h]"
+    echo >&2 "* Running testcase '$full_testcase_name'..."
+
+    preproc_args=()
+
+    pattern_to_str_preempt G 0 "$pat_p"
+    pattern_to_str_exact G 0 "$pat_e"
+    pattern_to_str_handler G 0 "$pat_h"
+
+    pattern_to_str_preempt V 1 "$pat_p"
+    pattern_to_str_exact V 1 "$pat_e"
+    pattern_to_str_handler V 1 "$pat_h"
+
+    pattern_to_str_preempt X 3 "$pat_p"
+    pattern_to_str_exact X 3 "$pat_e"
+    pattern_to_str_handler X 3 "$pat_h"
+
+    "$PREPROC" \
+        "$tc_dir"/input \
+        "$tc_dir"/output \
+        "$TEMP_INPUT_FILE" \
+        "$TEMP_EXPECT_OUTPUT_FILE" \
+        "${preproc_args[@]}" \
+        || exit $?
+
+    local rc=0
+    "$DSL" "$TEMP_INPUT_FILE" >"$TEMP_OUTPUT_FILE" || rc=$?
+
+    if (( rc != 0 )); then
+        report_test_result FAIL "$full_testcase_name" "bad return code ($rc)"
+    elif ! cmp -- "$TEMP_OUTPUT_FILE" "$TEMP_EXPECT_OUTPUT_FILE"; then
+        echo >&2
+        echo >&2 "Expected: $TEMP_EXPECT_OUTPUT_FILE"
+        echo >&2 "Found:    $TEMP_OUTPUT_FILE"
+        echo >&2
+        diff -u --  "$TEMP_OUTPUT_FILE" "$TEMP_EXPECT_OUTPUT_FILE"
+        report_test_result FAIL "$full_testcase_name" 'unexpected output'
+    else
+        report_test_result PASS "$full_testcase_name"
+    fi
+}
+
+PATTERNS=(
+    --:-
+    -+:+
+    +-:-
+    ++:+
+    -D:-
+    +D:+
+    D-:-
+    D+:+
+    DD:D
+)
+
+perform_test() {
+    local tc_dir=$1
+
+    local rc=0
+    if [[ -f "$tc_dir"/error ]]; then
+        "$DSL" "$tc_dir/input" >/dev/null || rc=$?
+        if (( rc == 0 )); then
+            report_test_result FAIL "$tc_dir" "bad return code (expected error)"
+        else
+            report_test_result PASS "$tc_dir"
+        fi
+
+    elif [[ -f "$tc_dir"/skip ]]; then
+        report_test_result SKIP "$tc_dir"
+
+    else
+        local pat_p pat_e pat_h
+        for pat_p in "${PATTERNS[@]}"; do
+            for pat_e in "${PATTERNS[@]}"; do
+                for pat_h in "${PATTERNS[@]}"; do
+                    do_perform_test_for_patterns "$tc_dir" "$pat_p" "$pat_e" "$pat_h"
+                done
+            done
+        done
+    fi
+}
+
+if (( $# == 0 )); then
+    echo >&2 "Performing all tests."
+    for tc_dir in "$TESTCASES_DIR"/*/; do
+        perform_test "$tc_dir"
+    done
+else
+    echo >&2 "Performing only the following tests: $*"
+    for arg; do
+        perform_test "$TESTCASES_DIR/$arg"
+    done
+fi
+
+echo >&2 "============"
+echo >&2 "Passed:  $CNT_PASS"
+echo >&2 "Skipped: $CNT_SKIP"
+echo >&2 "Failed:  $CNT_FAIL"
+if (( CNT_FAIL )); then
+    exit 1
+fi

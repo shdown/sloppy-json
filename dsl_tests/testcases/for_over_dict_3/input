@@ -1,0 +1,6 @@
+| &D
+$$$ declared D $$$
+| !for K, V in D
+{
+    do_something_with(K, V);
+}

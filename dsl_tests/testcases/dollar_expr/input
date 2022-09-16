@@ -1,0 +1,3 @@
+| &D
+$$$ declared D $$$
+| i = @int(${ D['key'] })

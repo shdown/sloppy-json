@@ -1,0 +1,166 @@
+#!/usr/bin/env bash
+
+shopt -s nullglob
+
+ME=$(readlink -- "$0" || printf '%s\n' "$0") || exit $?
+MY_DIR=$(dirname -- "$ME") || exit $?
+cd -- "$MY_DIR" || exit $?
+
+DSL=../dsl
+TESTCASES_DIR=./testcases
+
+TEMP_DSL_FILE=
+TEMP_C_FILE=
+TEMP_EXEC_FILE=
+TEMP_OUTPUT_FILE=
+trap '
+    rm -f -- "$TEMP_DSL_FILE" "$TEMP_C_FILE" "$TEMP_EXEC_FILE" "$TEMP_OUTPUT_FILE"
+    ' EXIT
+TEMP_DSL_FILE=$(mktemp) || exit $?
+TEMP_C_FILE=$(mktemp --suffix=.c) || exit $?
+TEMP_EXEC_FILE=$(mktemp) || exit $?
+TEMP_OUTPUT_FILE=$(mktemp) || exit $?
+
+: ${CONTINUE_ON_FAIL:=0}
+CNT_FAIL=0
+CNT_SKIP=0
+CNT_PASS=0
+
+report_test_result() {
+    local res=$1
+    local tc=$2
+    local msg=$3
+
+    if [[ $res == FAIL ]]; then
+        echo >&2 "---"
+        echo >&2 "Testcase '$tc' failed: $msg"
+        echo >&2 "---"
+        if (( ! CONTINUE_ON_FAIL )); then
+            exit 1
+        fi
+        (( ++CNT_FAIL ))
+    elif [[ $res == SKIP ]]; then
+        echo >&2 "* Testcase '$tc' skipped"
+        (( ++CNT_SKIP ))
+    elif [[ $res == PASS ]]; then
+        echo >&2 "* Testcase '$tc' passed"
+        (( ++CNT_PASS ))
+    else
+        echo >&2 "report_test_result: unknown status '$res'."
+        exit 1
+    fi
+}
+
+gen_dsl_source() {
+cat <<EOF
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include "json_visit.h"
+#include "json_esc.h"
+#include "json_parse_num.h"
+#include "json_gen_num.h"
+
+#define CHECK(Expr_) \\
+    do { \\
+        if (!(Expr_)) { \\
+            fprintf(stderr, "CHECK(%s) failed!\n", #Expr_); \\
+            abort(); \\
+        } \\
+    } while (0)
+
+#define PRINT_SPAN(S_) do_print_span(#S_, (S_))
+
+static void __attribute__((unused))
+do_print_span(const char *name, JsonSpan s)
+{
+    printf("%s = <<%.*s>>\n", name, (int) (s.end - s.begin), s.begin);
+}
+
+int main()
+{
+    char data[2048];
+    size_t ndata;
+    {
+        static const char *FILENAME = "$1/data.json";
+        FILE *f = fopen(FILENAME, "r");
+        if (!f) {
+            perror(FILENAME);
+            abort();
+        }
+        ndata = fread(data, 1, sizeof(data), f);
+        if (ferror(f)) {
+            perror(FILENAME);
+            abort();
+        }
+        fclose(f);
+    }
+EOF
+
+cat -- "$1"/input
+
+cat <<EOF
+    return 0;
+}
+EOF
+}
+
+perform_test() {
+    local tc_dir=$1
+
+    echo >&2 "Running test '$tc_dir'..."
+
+    echo >&2 " * generating DSL source..."
+    gen_dsl_source "$tc_dir" > "$TEMP_DSL_FILE" || exit $?
+
+    echo >&2 " * generating C source from DSL source..."
+    "$DSL" "$TEMP_DSL_FILE" > "$TEMP_C_FILE" || exit $?
+
+    echo >&2 " * compiling C source..."
+    "$DETECTED_CC" -Wall -Wextra -I.. "$TEMP_C_FILE" ../*.c -o "$TEMP_EXEC_FILE" || exit $?
+
+    echo >&2 " * running the native executable..."
+    "$TEMP_EXEC_FILE" > "$TEMP_OUTPUT_FILE" || exit $?
+
+    echo >&2 " * comparing the outputs..."
+    if ! cmp -- "$tc_dir"/output "$TEMP_OUTPUT_FILE"; then
+        diff -u -- "$tc_dir"/output "$TEMP_OUTPUT_FILE"
+        report_test_result FAIL "$tc_dir" 'unexpected output'
+    else
+        report_test_result PASS "$tc_dir"
+    fi
+}
+
+detect_cc() {
+    local -a compilers=(gcc clang)
+    local c
+    for c in "${compilers[@]}"; do
+        if command -v "$c" >/dev/null; then
+            DETECTED_CC=$c
+            return
+        fi
+    done
+    echo >&2 "No compiler found; tried: ${compilers[*]}"
+    return 1
+}
+detect_cc || exit $?
+
+if (( $# == 0 )); then
+    echo >&2 "Performing all tests."
+    for tc_dir in "$TESTCASES_DIR"/*/; do
+        perform_test "$tc_dir"
+    done
+else
+    echo >&2 "Performing only the following tests: $*"
+    for arg; do
+        perform_test "$TESTCASES_DIR/$arg"
+    done
+fi
+
+echo >&2 "============"
+echo >&2 "Passed:  $CNT_PASS"
+echo >&2 "Skipped: $CNT_SKIP"
+echo >&2 "Failed:  $CNT_FAIL"
+if (( CNT_FAIL )); then
+    exit 1
+fi

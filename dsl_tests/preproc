@@ -1,0 +1,306 @@
+#!/usr/bin/env python3
+import re
+import sys
+
+
+class TriStateSetting:
+    def __init__(self, disabled_value, value=None):
+        self.disabled_value = disabled_value
+        self.value = value
+
+    def set_default(self):
+        self.value = None
+
+    def is_default(self):
+        return self.value is None
+
+    def is_disabled(self):
+        return self.value == self.disabled_value
+
+    def set_value(self, value):
+        self.value = value
+
+    def __str__(self):
+        if self.value is None:
+            return '(DEFAULT)'
+        return self.value
+
+
+def make_yes_no_tri_state_setting():
+    return TriStateSetting(disabled_value='no')
+
+
+def make_string_tri_state_setting():
+    return TriStateSetting(disabled_value='-')
+
+
+class Params:
+    def __init__(
+        self,
+        global_preempt,
+        global_exact,
+        global_handler,
+        var_preempt,
+        var_exact,
+        var_handler,
+        expect_preempt,
+        expect_exact,
+        expect_handler
+    ):
+        self.global_preempt = global_preempt
+        self.global_exact = global_exact
+        self.global_handler = global_handler
+        self.var_preempt = var_preempt
+        self.var_exact = var_exact
+        self.var_handler = var_handler
+        self.expect_preempt = expect_preempt
+        self.expect_exact = expect_exact
+        self.expect_handler = expect_handler
+
+
+def parse_output_line_afterflags(s, i):
+    n = len(s)
+    if i == n or s[i] != '[':
+        raise ValueError('expected $[-expression here')
+    flags = []
+    while True:
+        i += 1
+        if i == n:
+            raise ValueError('unterminated $[-expression')
+        c = s[i]
+        if c == ']':
+            return i + 1, ''.join(flags)
+        elif c in 'PEH':
+            flags.append(c)
+        else:
+            raise ValueError(f'unknown flag {repr(c)}')
+
+
+def strip_invocation(s, remove_semicolon, remove_closing_paren):
+    suffixes = []
+    if remove_semicolon and s.endswith(';'):
+        s = s[:-1]
+        suffixes.append(';')
+    if remove_closing_paren and s.endswith(')'):
+        s = s[:-1]
+        suffixes.append(')')
+    return ''.join(suffixes[::-1]), s
+
+
+class OutputLineFunCall:
+    """
+    Represents a $function$(args)$[flags] thing.
+    """
+    def __init__(self, s, i, j, k):
+        self.part1 = s[i + 1:j]
+        self.part2 = s[j + 1:k]
+        self.handler = None
+
+    def set_preempt(self, preempt_device):
+        if preempt_device.is_default() or preempt_device.is_disabled():
+            return
+        self.part1 = 'PREEMPT_' + self.part1
+        suffix, new_part2 = strip_invocation(
+            self.part2,
+            remove_semicolon=True,
+            remove_closing_paren=True)
+        self.part2 = f'{new_part2}, {preempt_device}{suffix}'
+
+    def set_exact(self, exact):
+        if exact.is_default() or exact.is_disabled():
+            return
+        self.part1 += '_exact'
+
+    def set_handler(self, handler):
+        if handler.is_default() or handler.is_disabled():
+            return
+        self.handler = handler
+
+    def __str__(self):
+        if self.handler is not None:
+            _, part2_sans_semicolon = strip_invocation(
+                self.part2,
+                remove_semicolon=True,
+                remove_closing_paren=False)
+            expr = self.part1 + part2_sans_semicolon
+            return 'if (unlikely(%s < 0)) { %s }' % (expr, self.handler)
+        return self.part1 + self.part2
+
+
+def convert_output_line(s, expect_preempt, expect_exact, expect_handler):
+    chunks = []
+    while True:
+        i = s.find('$')
+        if i < 0:
+            chunks.append(s)
+            break
+        j = s.find('$', i + 1)
+        if j < 0:
+            raise ValueError('unterminated $-expression')
+        k = s.find('$', j + 1)
+        if k < 0:
+            raise ValueError('unterminated $-expression')
+
+        next_i, flags = parse_output_line_afterflags(s, k + 1)
+        funcall = OutputLineFunCall(s, i, j, k)
+        chunks.append(s[:i])
+        s = s[next_i:]
+
+        if 'P' in flags:
+            funcall.set_preempt(expect_preempt)
+        if 'E' in flags:
+            funcall.set_exact(expect_exact)
+        if 'H' in flags:
+            funcall.set_handler(expect_handler)
+
+        chunks.append(str(funcall))
+
+    return ''.join(chunks)
+
+
+def preprocess(params, input_tmpl_f, output_tmpl_f, input_dest_f, output_dest_f):
+    def _output_pragma(pragma):
+        print(pragma, file=input_dest_f)
+        print('/*|*/ /*empty*/', file=output_dest_f)
+
+    if not params.global_preempt.is_default():
+        _output_pragma(f'| !preempt global set {params.global_preempt}')
+    if not params.global_exact.is_default():
+        _output_pragma(f'| !exact global set {params.global_exact}')
+    if not params.global_handler.is_default():
+        _output_pragma(f'| !handler global push {params.global_handler}')
+
+    while True:
+        line_i = input_tmpl_f.readline().rstrip('\n')
+
+        if line_i.startswith('$$$'):
+            m = re.fullmatch(r'\$\$\$ declared ([_A-Za-z][_A-Za-z0-9]*) \$\$\$', line_i)
+            if m:
+                var_name = m.groups()[0]
+                if not params.var_preempt.is_default():
+                    _output_pragma(f'| !preempt for {var_name} set {params.var_preempt}')
+                if not params.var_exact.is_default():
+                    _output_pragma(f'| !exact for {var_name} set {params.var_exact}')
+                if not params.var_handler.is_default():
+                    _output_pragma(f'| !handler for {var_name} set {params.var_handler}')
+                continue
+            elif line_i == '$$$ turn off VH $$$':
+                params.var_handler.set_default()
+                continue
+            else:
+                raise ValueError(f'unknown $$$-directive: {repr(line_i)}')
+
+        line_o = output_tmpl_f.readline().rstrip('\n')
+
+        if not line_i or not line_o:
+            if line_i:
+                raise ValueError(f'unexpected continuation of input template file: {repr(line_i)}')
+            if line_o:
+                raise ValueError(f'unexpected continuation of output template file: {repr(line_o)}')
+            break
+
+        new_line_o = convert_output_line(
+            line_o,
+            params.expect_preempt,
+            params.expect_exact,
+            params.expect_handler)
+
+        print(new_line_o, file=output_dest_f)
+        print(line_i, file=input_dest_f)
+
+
+class InvalidUsageException(BaseException):
+    pass
+
+
+class ArgvList:
+    def __init__(self, argv):
+        self.argv = argv
+        self.offset = 0
+
+    def has_more_args(self):
+        return self.offset != len(self.argv)
+
+    def next_arg(self):
+        if not self.has_more_args():
+            raise InvalidUsageException()
+        arg = self.argv[self.offset]
+        self.offset += 1
+        return arg
+
+
+def main():
+    params_dict = {
+        'GP': make_string_tri_state_setting(),
+        'GE': make_yes_no_tri_state_setting(),
+        'GH': make_string_tri_state_setting(),
+
+        'VP': make_string_tri_state_setting(),
+        'VE': make_yes_no_tri_state_setting(),
+        'VH': make_string_tri_state_setting(),
+
+        'XP': make_string_tri_state_setting(),
+        'XE': make_yes_no_tri_state_setting(),
+        'XH': make_string_tri_state_setting(),
+    }
+
+    argv_list = ArgvList(sys.argv[1:])
+
+    try:
+        input_tmpl_f = open(argv_list.next_arg(), 'r')
+        output_tmpl_f = open(argv_list.next_arg(), 'r')
+        input_dest_f = open(argv_list.next_arg(), 'w')
+        output_dest_f = open(argv_list.next_arg(), 'w')
+    except InvalidUsageException:
+        print('''\
+USAGE: preproc.py INPUT_TEMPLATE OUTPUT_TEMPLATE INPUT_DEST OUTPUT_DEST [OPTION ...]
+Available OPTIONs:
+ * GP=preempt_device: set global preempt device
+ * GE=yes_or_no: set global exact flag
+ * GH=handler: set global error handler
+
+ * VP=preempt_device: set variable-specific preempt device
+ * VE=yes_or_no: set variable-specific exact flag
+ * VH=handler: set variable-specific error handler
+
+ * XP=preempt_device: set expected preempt device
+ * XE=yes_or_no: set expected exact flag
+ * XH=handler: set expected error handler
+''', file=sys.stderr)
+        sys.exit(2)
+
+    while argv_list.has_more_args():
+        arg = argv_list.next_arg()
+        kv = arg.split('=', maxsplit=1)
+        if len(kv) != 2:
+            raise ValueError('invalid key=value pair argument')
+        k, v = kv
+        if k not in params_dict:
+            raise ValueError('invalid key=value pair argument')
+        params_dict[k].set_value(v)
+
+    params = Params(
+        global_preempt=params_dict['GP'],
+        global_exact=params_dict['GE'],
+        global_handler=params_dict['GH'],
+
+        var_preempt=params_dict['VP'],
+        var_exact=params_dict['VE'],
+        var_handler=params_dict['VH'],
+
+        expect_preempt=params_dict['XP'],
+        expect_exact=params_dict['XE'],
+        expect_handler=params_dict['XH'],
+    )
+
+    preprocess(
+        params=params,
+        input_tmpl_f=input_tmpl_f,
+        output_tmpl_f=output_tmpl_f,
+        input_dest_f=input_dest_f,
+        output_dest_f=output_dest_f
+    )
+
+
+if __name__ == '__main__':
+    main()

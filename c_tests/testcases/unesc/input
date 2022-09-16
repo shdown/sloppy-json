@@ -1,0 +1,16 @@
+| D = &(data, data + ndata)
+| v = D['key']
+
+char buf[1024];
+ssize_t n = json_unesc(v.begin, v.end, buf);
+CHECK(n >= 0);
+CHECK(n < 1024);
+buf[n] = '\0';
+
+const char *content = "a\nb\\c\"d@eΔΩΩ";
+
+CHECK(strcmp(buf, content) == 0);
+
+CHECK(json_span_streq_exact(v, content));
+
+CHECK(json_span_streq_exact_b(v, content, content + strlen(content)));

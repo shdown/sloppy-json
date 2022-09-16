@@ -1,0 +1,9 @@
+| D = &(data, data + ndata)
+| E0 = D[0]
+| E1 = D[1]
+| E2 = D[2]
+| E3 = D[3]
+PRINT_SPAN(E0);
+PRINT_SPAN(E1);
+PRINT_SPAN(E2);
+PRINT_SPAN(E3);

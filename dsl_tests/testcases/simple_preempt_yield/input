@@ -1,0 +1,4 @@
+| !preempt global set &preempt
+| !yield
+| !yield 1
+| !yield 35

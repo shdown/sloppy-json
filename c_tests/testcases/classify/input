@@ -1,0 +1,19 @@
+(void) data;
+(void) ndata;
+
+#define CHECK_CLASSIFY(S_, C_) \
+    do { \
+        const char *s = (S_); \
+        CHECK(json_classify(s, s + strlen(s)) == (C_)); \
+    } while (0)
+
+CHECK_CLASSIFY("  {}", '{');
+CHECK_CLASSIFY("{}", '{');
+CHECK_CLASSIFY("[]", '[');
+CHECK_CLASSIFY("\"hello\"", '"');
+CHECK_CLASSIFY("-3.5", '#');
+CHECK_CLASSIFY("0", '#');
+CHECK_CLASSIFY("true", '?');
+CHECK_CLASSIFY("false", '?');
+CHECK_CLASSIFY("null", '_');
+CHECK_CLASSIFY("what is this", '\0');

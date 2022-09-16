@@ -1,0 +1,5 @@
+| &D
+$$$ declared D $$$
+| a = D['X']
+| b = D['X']
+| c = D['Y']

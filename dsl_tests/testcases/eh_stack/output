@@ -1,0 +1,12 @@
+/*|*/ /*empty*/
+/*|*/ /*empty*/
+/*|*/ /*empty*/
+/*|*/ JsonElemEntry DSL_aux_1_[1] = {0}; if (unlikely($json_parse_array_elems$(a.begin, a.end, DSL_aux_1_, 1)$[P] < 0)) { goto fail_1; } JsonSpan b = json_span_from_eentry(DSL_aux_1_[0]);
+/*|*/ /*empty*/
+/*|*/ JsonElemEntry DSL_aux_2_[1] = {0}; if (unlikely($json_parse_array_elems$(b.begin, b.end, DSL_aux_2_, 1)$[P] < 0)) { goto fail_2; } JsonSpan c = json_span_from_eentry(DSL_aux_2_[0]);
+/*|*/ /*empty*/
+/*|*/ JsonElemEntry DSL_aux_3_[1] = {0}; if (unlikely($json_parse_array_elems$(c.begin, c.end, DSL_aux_3_, 1)$[P] < 0)) { goto fail_3; } JsonSpan d = json_span_from_eentry(DSL_aux_3_[0]);
+/*|*/ /*empty*/
+/*|*/ JsonElemEntry DSL_aux_4_[1] = {0}; if (unlikely($json_parse_array_elems$(d.begin, d.end, DSL_aux_4_, 1)$[P] < 0)) { goto fail_2; } JsonSpan e = json_span_from_eentry(DSL_aux_4_[0]);
+/*|*/ /*empty*/
+/*|*/ JsonElemEntry DSL_aux_5_[1] = {0}; if (unlikely($json_parse_array_elems$(e.begin, e.end, DSL_aux_5_, 1)$[P] < 0)) { goto fail_1; } JsonSpan f = json_span_from_eentry(DSL_aux_5_[0]);
