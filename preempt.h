@@ -3,6 +3,8 @@
 #include "common.h"
 #include "fiber.h"
 
+enum { PREEMPT_DEFAULT_ALLOWANCE = 10000 };
+
 typedef struct {
     uint32_t left;
     uint32_t allowance;
@@ -11,6 +13,9 @@ typedef struct {
 
 in_header PreemptDevice preempt_new(uint32_t allowance, FiberParams fib_par)
 {
+    if (!allowance) {
+        allowance = PREEMPT_DEFAULT_ALLOWANCE;
+    }
     return (PreemptDevice) {
         .left      = allowance,
         .allowance = allowance,

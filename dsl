@@ -477,7 +477,7 @@ def print_error_and_die(linenum, t):
 
 def read_input(f):
     result = []
-    for num, line in enumerate(f):
+    for num, line in enumerate(f, start=1):
         if line[:1] == '|':
             try:
                 obj = handle_dsl_line(line[1:])
