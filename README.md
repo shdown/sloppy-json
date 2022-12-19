@@ -94,7 +94,7 @@ Exact and sparse flags
 Preemption
 ---
 
-`PREEMPT_DEVICE` is either `-` (no preempt device) or a C expressio of type `PreemptDevice *`.
+`PREEMPT_DEVICE` is either `-` (no preempt device) or a C expression of type `PreemptDevice *`.
 
 * `!preempt global set PREEMPT_DEVICE`
 
