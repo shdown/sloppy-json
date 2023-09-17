@@ -77,7 +77,7 @@ PREEMPT_DECLF(
 {
     buf = PREEMPT_CALL(skip_whitespace, buf, buf_end);
     if (unlikely(buf == buf_end))
-        return '\0';
+        return JSON_CLASS_BAD;
     return MAIN_TABLE[(unsigned char) *buf] >> CLASS_OFFSET;
 }
 
@@ -136,7 +136,8 @@ PREEMPT_DECLF(
         return NULL;
 
     char x = *buf;
-    if (x == '[' || x == '{') {
+    if ((x & 0xDF) == 0x5B) {
+        // x is either '[' or '{'
         static const int8_t table[256] = {
             ['['] = 1,
             ['{'] = 1,
