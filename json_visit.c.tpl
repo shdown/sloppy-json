@@ -48,7 +48,7 @@ PREEMPT_DECLF(
         const char *buf,
         const char *buf_end)
 {
-    buf = PREEMPT_CALL(json_skip_ws, buf, buf_end);
+    buf = PREEMPT_CALL(skip_whitespace, buf, buf_end);
     if (unlikely(buf == buf_end))
         return '\0';
     static const uint8_t table[256] = {
