@@ -15,19 +15,46 @@
 # define PREEMPT_CALL_V(F_, ...)                        F_()
 #endif
 
+enum {
+    FLAG_WHITESPACE = 1 << 0,
+    FLAG_TOKEN      = 1 << 1,
+    CLASS_OFFSET    = 2,
+};
+
+#define MAKE_CLASS(C_) ((C_) << CLASS_OFFSET)
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Woverride-init"
+static const uint8_t MAIN_TABLE[256] = {
+    [' ']           = FLAG_WHITESPACE,
+    ['\t']          = FLAG_WHITESPACE,
+    ['\n']          = FLAG_WHITESPACE,
+    ['\r']          = FLAG_WHITESPACE,
+
+    ['0' ... '9']   = FLAG_TOKEN | MAKE_CLASS(JSON_CLASS_NUM),
+    ['a' ... 'z']   = FLAG_TOKEN,
+    ['.']           = FLAG_TOKEN,
+    ['-']           = FLAG_TOKEN | MAKE_CLASS(JSON_CLASS_NUM),
+    ['+']           = FLAG_TOKEN,
+    ['E']           = FLAG_TOKEN,
+
+    ['t']           = FLAG_TOKEN | MAKE_CLASS(JSON_CLASS_BOOL),
+    ['f']           = FLAG_TOKEN | MAKE_CLASS(JSON_CLASS_BOOL),
+    ['n']           = FLAG_TOKEN | MAKE_CLASS(JSON_CLASS_NULL),
+
+    ['"']           = MAKE_CLASS(JSON_CLASS_STR),
+    ['[']           = MAKE_CLASS(JSON_CLASS_ARRAY),
+    ['{']           = MAKE_CLASS(JSON_CLASS_DICT),
+};
+#pragma GCC diagnostic pop
+
 PREEMPT_DECLF(
     static inline const char *,
     skip_whitespace,
         const char *s,
         const char *s_end)
 {
-    static const unsigned char table[256] = {
-        [' ']  = 1,
-        ['\t'] = 1,
-        ['\n'] = 1,
-        ['\r'] = 1,
-    };
-    while (s != s_end && table[(unsigned char) *s]) {
+    while (s != s_end && (MAIN_TABLE[(unsigned char) *s] & FLAG_WHITESPACE)) {
         PREEMPT_INCR(s);
     }
     return s;
@@ -51,15 +78,7 @@ PREEMPT_DECLF(
     buf = PREEMPT_CALL(skip_whitespace, buf, buf_end);
     if (unlikely(buf == buf_end))
         return '\0';
-    static const uint8_t table[256] = {
-        ['['] = JSON_CLASS_ARRAY,
-        ['{'] = JSON_CLASS_DICT,
-        ['"'] = JSON_CLASS_STR,
-        ['-'] = JSON_CLASS_NUM, ['0' ... '9'] = JSON_CLASS_NUM,
-        ['t'] = JSON_CLASS_BOOL, ['f'] = JSON_CLASS_BOOL,
-        ['n'] = JSON_CLASS_NULL,
-    };
-    return table[(unsigned char) *buf];
+    return MAIN_TABLE[(unsigned char) *buf] >> CLASS_OFFSET;
 }
 
 PREEMPT_DECLF(
@@ -140,17 +159,9 @@ PREEMPT_DECLF(
 
     } else {
         // Skip either a number or one of the following tokens: "true", "false", "null".
-        static const unsigned char table[256] = {
-            ['0' ... '9'] = 1,
-            ['a' ... 'z'] = 1,
-            ['.']         = 1,
-            ['-']         = 1,
-            ['+']         = 1,
-            ['E']         = 1,
-        };
         do {
             PREEMPT_INCR(buf);
-        } while (buf != buf_end && table[(unsigned char) *buf]);
+        } while (buf != buf_end && (MAIN_TABLE[(unsigned char) *buf] & FLAG_TOKEN));
         return buf;
     }
 }
