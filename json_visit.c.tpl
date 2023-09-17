@@ -96,6 +96,7 @@ PREEMPT_DECLF(
 
     for (;;) {
 
+#if JSON_PREEMPTIBLE
         for (;;) {
             if (unlikely(buf == buf_end))
                 return NULL;
@@ -104,6 +105,13 @@ PREEMPT_DECLF(
 
             PREEMPT_INCR(buf);
         }
+#else
+        if (unlikely(buf == buf_end))
+            return NULL;
+        buf = memchr(buf, '"', buf_end - buf);
+        if (unlikely(!buf))
+            return NULL;
+#endif
 
         ssize_t offset = -1;
         while (buf[offset] == '\\') {
@@ -296,6 +304,7 @@ PREEMPT_DECLF(
         const char *b,
         size_t n)
 {
+#if JSON_PREEMPTIBLE
     size_t i = 0;
     while (i < n) {
         if (a[i] != b[i]) {
@@ -304,6 +313,11 @@ PREEMPT_DECLF(
         PREEMPT_INCR(i);
     }
     return true;
+#else
+    if (!n)
+        return true;
+    return memcmp(a, b, n) == 0;
+#endif
 }
 
 PREEMPT_DECLF(
@@ -445,6 +459,7 @@ PREEMPT_DECLF(
         find_next_escape,
             const char *buf, const char *buf_end)
 {
+#if JSON_PREEMPTIBLE
     while (buf != buf_end) {
         if (*buf == '\\') {
             break;
@@ -452,6 +467,11 @@ PREEMPT_DECLF(
         PREEMPT_INCR(buf);
     }
     return buf;
+#else
+    if (buf != buf_end)
+        buf = memchr(buf, '\\', buf_end - buf);
+    return buf ? buf : buf_end;
+#endif
 }
 
 static inline int unesc_single(char c)
@@ -637,23 +657,6 @@ PREEMPT_DECLF(
 }
 
 PREEMPT_DECLF(
-    static inline bool,
-    my_memeq,
-        const char *p,
-        const char *q,
-        size_t n)
-{
-    size_t i = 0;
-    while (i < n) {
-        if (*p != *q) {
-            return false;
-        }
-        PREEMPT_INCR(i);
-    }
-    return true;
-}
-
-PREEMPT_DECLF(
     int,
     json_streq_exact,
         const char *j,
@@ -703,7 +706,7 @@ PREEMPT_DECLF(
         if (nleft_ < nx_) { \
             return 0; \
         } \
-        if (!PREEMPT_CALL(my_memeq, src_, buf, nx_)) { \
+        if (!PREEMPT_CALL(span_eq, src_, buf, nx_)) { \
             return 0; \
         } \
         buf += nx_; \
