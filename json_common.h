@@ -2,6 +2,16 @@
 
 #include "common.h"
 
+enum {
+    JSON_CLASS_BAD,
+    JSON_CLASS_ARRAY,
+    JSON_CLASS_DICT,
+    JSON_CLASS_STR,
+    JSON_CLASS_NUM,
+    JSON_CLASS_BOOL,
+    JSON_CLASS_NULL,
+};
+
 typedef struct {
     const char *begin;
     const char *end;

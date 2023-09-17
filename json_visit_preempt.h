@@ -6,7 +6,7 @@
 
 const char *PREEMPT_json_skip_ws(const char *buf, const char *buf_end, PreemptDevice *p);
 
-char PREEMPT_json_classify(const char *buf, const char *buf_end, PreemptDevice *p);
+uint8_t PREEMPT_json_classify(const char *buf, const char *buf_end, PreemptDevice *p);
 
 int PREEMPT_json_array_next(JsonSpan a, JsonSpan *e, PreemptDevice *p);
 

@@ -43,7 +43,7 @@ PREEMPT_DECLF(
 }
 
 PREEMPT_DECLF(
-    char,
+    uint8_t,
     json_classify,
         const char *buf,
         const char *buf_end)
@@ -51,13 +51,13 @@ PREEMPT_DECLF(
     buf = PREEMPT_CALL(json_skip_ws, buf, buf_end);
     if (unlikely(buf == buf_end))
         return '\0';
-    static const char table[256] = {
-        ['['] = '[',
-        ['{'] = '{',
-        ['"'] = '"',
-        ['-'] = '#', ['0' ... '9'] = '#',
-        ['t'] = '?', ['f'] = '?',
-        ['n'] = '_',
+    static const uint8_t table[256] = {
+        ['['] = JSON_CLASS_ARRAY,
+        ['{'] = JSON_CLASS_DICT,
+        ['"'] = JSON_CLASS_STR,
+        ['-'] = JSON_CLASS_NUM, ['0' ... '9'] = JSON_CLASS_NUM,
+        ['t'] = JSON_CLASS_BOOL, ['f'] = JSON_CLASS_BOOL,
+        ['n'] = JSON_CLASS_NULL,
     };
     return table[(unsigned char) *buf];
 }

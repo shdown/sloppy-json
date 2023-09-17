@@ -7,13 +7,13 @@
         CHECK(json_classify(s, s + strlen(s)) == (C_)); \
     } while (0)
 
-CHECK_CLASSIFY("  {}", '{');
-CHECK_CLASSIFY("{}", '{');
-CHECK_CLASSIFY("[]", '[');
-CHECK_CLASSIFY("\"hello\"", '"');
-CHECK_CLASSIFY("-3.5", '#');
-CHECK_CLASSIFY("0", '#');
-CHECK_CLASSIFY("true", '?');
-CHECK_CLASSIFY("false", '?');
-CHECK_CLASSIFY("null", '_');
-CHECK_CLASSIFY("what is this", '\0');
+CHECK_CLASSIFY("  {}", JSON_CLASS_DICT);
+CHECK_CLASSIFY("{}", JSON_CLASS_DICT);
+CHECK_CLASSIFY("[]", JSON_CLASS_ARRAY);
+CHECK_CLASSIFY("\"hello\"", JSON_CLASS_STR);
+CHECK_CLASSIFY("-3.5", JSON_CLASS_NUM);
+CHECK_CLASSIFY("0", JSON_CLASS_NUM);
+CHECK_CLASSIFY("true", JSON_CLASS_BOOL);
+CHECK_CLASSIFY("false", JSON_CLASS_BOOL);
+CHECK_CLASSIFY("null", JSON_CLASS_NULL);
+CHECK_CLASSIFY("what is this", JSON_CLASS_BAD);

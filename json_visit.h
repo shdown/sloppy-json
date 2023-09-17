@@ -7,15 +7,8 @@
 // buffer is reached.
 const char *json_skip_ws(const char *buf, const char *buf_end);
 
-// Classifies the JSON object at {buf ... buf_end}. Returns:
-//  * '[' if array;
-//  * '{' if dict;
-//  * '"' if string;
-//  * '#' if number;
-//  * '?' if boolean;
-//  * '_' if null;
-//  * '\0' if not a valid JSON object.
-char json_classify(const char *buf, const char *buf_end);
+// Classifies the JSON object at {buf ... buf_end}.
+uint8_t json_classify(const char *buf, const char *buf_end);
 
 // If '*e' is '{0}', writes the span of the first element into '*e' and returns 1.
 // Otherwise, if '*e' spans an element of the array, writes the span of the next element into '*e'
