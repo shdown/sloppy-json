@@ -648,8 +648,8 @@ PREEMPT_DECLF(
 {
     size_t i = 0;
     while (i < n) {
-        char c = *p;
-        if (c == '\0' || c != *q) {
+        char c = p[i];
+        if (c == '\0' || c != q[i]) {
             return false;
         }
         PREEMPT_INCR(i);

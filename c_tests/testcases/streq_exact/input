@@ -1,0 +1,5 @@
+| D = &(data, data + ndata)
+| v = D['key']
+
+CHECK(json_span_streq_exact(v, "value"));
+CHECK(!json_span_streq_exact(v, "vrong"));
