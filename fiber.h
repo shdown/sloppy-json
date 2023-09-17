@@ -58,7 +58,7 @@ void fiber_handle_error(const char *expr)
         (void *) (uintptr_t) ((((uint64_t) __u1) << 32) | __u0); \
     })
 
-// We pass to pointers to the fiber, the "userdata" (whatever provided by the user) and
+// We pass two pointers to the fiber, the "userdata" (whatever provided by the user) and
 // a pointer to 'FiberParams' to be able to yield.
 // Hint: store the "is_done" flag in the buffer pointed to by "userdata".
 #define FIBER_GET_USERDATA() FIBER_UNPACK_II_INTO_P(__a0, __a1)
