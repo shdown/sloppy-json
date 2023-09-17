@@ -83,15 +83,10 @@ PREEMPT_DECLF(
 
 PREEMPT_DECLF(
     static const char *,
-    skip_str,
+    skip_str_unchecked,
         const char *buf,
         const char *buf_end)
 {
-    if (unlikely(buf == buf_end))
-        return NULL;
-    if (unlikely(*buf != '"'))
-        return NULL;
-
     PREEMPT_INCR(buf);
 
     for (;;) {
@@ -128,6 +123,19 @@ PREEMPT_DECLF(
 
 PREEMPT_DECLF(
     static inline const char *,
+    skip_str,
+        const char *buf,
+        const char *buf_end)
+{
+    if (unlikely(buf == buf_end))
+        return NULL;
+    if (unlikely(*buf != '"'))
+        return NULL;
+    return PREEMPT_CALL(skip_str_unchecked, buf, buf_end);
+}
+
+PREEMPT_DECLF(
+    static const char *,
     skip_obj,
         const char *buf,
         const char *buf_end)
@@ -151,7 +159,7 @@ PREEMPT_DECLF(
                 return NULL;
             char y = *buf;
             if (y == '"') {
-                buf = PREEMPT_CALL(skip_str, buf, buf_end);
+                buf = PREEMPT_CALL(skip_str_unchecked, buf, buf_end);
                 if (unlikely(!buf))
                     return NULL;
             } else {
@@ -164,7 +172,7 @@ PREEMPT_DECLF(
         }
 
     } else if (x == '"') {
-        return PREEMPT_CALL(skip_str, buf, buf_end);
+        return PREEMPT_CALL(skip_str_unchecked, buf, buf_end);
 
     } else {
         // Skip either a number or one of the following tokens: "true", "false", "null".
