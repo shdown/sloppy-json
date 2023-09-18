@@ -15,6 +15,27 @@
 # define PREEMPT_CALL_V(F_, ...)                        F_()
 #endif
 
+// The "main table" contains flags and classes for all of the 256 symbols.
+//
+// FLAG_WHITESPACE is set iff the symbol is a whitespace (as per JSON standard).
+//
+// FLAG_TOKEN is set iff either:
+//  * the symbol can be a part a number (as per JSON standard), or
+//  * it is a lowercase ASCII letter.
+// We use this flag when we need to skip a token (either a number or literal "true"/"false"/"null").
+//
+// Observe than we can tell the type of a JSON object by its first symbol:
+//  * if the first symbol is '-' or '0'...'9', it's a number;
+//  * if the first symbol is '"', it's a string;
+//  * if the first symbol is '[', it's an array;
+//  * if the first symbol is '{', it's a dict;
+//  * if the first symbol is 't' or 'f', it's a bool;
+//  * if the first symbol is 'n', it's null;
+//  * otherwise, it's not a valid JSON object.
+//
+// Then the class of a symbol is the expected type (one of JSON_CLASS_* constants) of a JSON object
+// starting with this symbol. We store the class at the bit offset of CLASS_OFFSET.
+
 enum {
     FLAG_WHITESPACE = 1 << 0,
     FLAG_TOKEN      = 1 << 1,
@@ -26,6 +47,8 @@ enum {
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Woverride-init"
 static const uint8_t MAIN_TABLE[256] = {
+    // We assume JSON_CLASS_BAD == 0.
+
     [' ']           = FLAG_WHITESPACE,
     ['\t']          = FLAG_WHITESPACE,
     ['\n']          = FLAG_WHITESPACE,
@@ -81,6 +104,7 @@ PREEMPT_DECLF(
     return MAIN_TABLE[(unsigned char) *buf] >> CLASS_OFFSET;
 }
 
+// Skip a string. Assumes (does not check) that (buf != buf_end && buf[0] == '"').
 PREEMPT_DECLF(
     static const char *,
     skip_str_unchecked,
@@ -90,6 +114,8 @@ PREEMPT_DECLF(
     PREEMPT_INCR(buf);
 
     for (;;) {
+
+        // Find the next '"'. If none, return NULL.
 
 #if JSON_PREEMPTIBLE
         for (;;) {
@@ -108,6 +134,8 @@ PREEMPT_DECLF(
             return NULL;
 #endif
 
+        // Check if it is escaped. If not, return buf+1. Otherwise, do ++buf and repeat.
+
         ssize_t offset = -1;
         while (buf[offset] == '\\') {
             PREEMPT_DECR(offset);
@@ -121,6 +149,7 @@ PREEMPT_DECLF(
     }
 }
 
+// Skip a string. Checks that (buf != buf_end && buf[0] == '"')
 PREEMPT_DECLF(
     static inline const char *,
     skip_str,
@@ -134,6 +163,7 @@ PREEMPT_DECLF(
     return PREEMPT_CALL(skip_str_unchecked, buf, buf_end);
 }
 
+// Skip an object.
 PREEMPT_DECLF(
     static const char *,
     skip_obj,
@@ -323,9 +353,21 @@ PREEMPT_DECLF(
     }
     return true;
 #else
+    // Check a few starting characters, then call memcmp().
     if (!n)
         return true;
-    return memcmp(a, b, n) == 0;
+
+    if (a[0] != b[0])
+        return false;
+    if (n == 1)
+        return true;
+
+    if (a[1] != b[1])
+        return false;
+    if (n == 2)
+        return true;
+
+    return memcmp(a + 2, b + 2, n - 2) == 0;
 #endif
 }
 
@@ -393,15 +435,18 @@ PREEMPT_DECLF(
         JsonElemEntry *entries,
         int nentries)
 {
+    if (unlikely(!nentries))
+        return 0;
+
     JsonSpan a = {buf, buf_end};
     JsonSpan v = {0};
     JsonElemEntry *entries_end = entries + nentries;
     int r;
     while ((r = PREEMPT_CALL(json_array_next, a, &v)) > 0) {
+        *entries++ = (JsonElemEntry) {v.begin, v.end};
         if (entries == entries_end) {
             return 0;
         }
-        *entries++ = (JsonElemEntry) {v.begin, v.end};
     }
     return r;
 }
@@ -414,6 +459,9 @@ PREEMPT_DECLF(
         JsonSparseElemEntry *entries,
         int nentries)
 {
+    if (unlikely(!nentries))
+        return 0;
+
     JsonSpan a = {buf, buf_end};
     JsonSpan v = {0};
     JsonSparseElemEntry *entries_end = entries + nentries;
@@ -421,13 +469,13 @@ PREEMPT_DECLF(
     size_t i = 0;
     while ((r = PREEMPT_CALL(json_array_next, a, &v)) > 0) {
         for (;;) {
-            if (entries == entries_end) {
-                return 0;
-            }
             if (entries->i == i) {
                 entries->v_begin = v.begin;
                 entries->v_end = v.end;
                 ++entries;
+                if (entries == entries_end) {
+                    return 0;
+                }
             } else {
                 break;
             }
@@ -558,6 +606,11 @@ bad:
     return -1;
 }
 
+// Unescapes a JSON string in {j ... j_end}.
+// Calls:
+//  * UNESC_RETURN_BAD(int error_code) on error;
+//  * UNESC_PRODUCE_CHUNK(const char *chunk, const char *chunk_end) to produce a chunk;
+//  * UNESC_PRODUCE_1(int c) to produce a single byte.
 #define UNESC_TEMPLATE() \
     if (unlikely(j == j_end || j[0] != '"')) { \
         UNESC_RETURN_BAD(1); \
