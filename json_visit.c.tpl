@@ -606,31 +606,34 @@ bad:
     return -1;
 }
 
-// Unescapes a JSON string in {j ... j_end}.
+// Unescapes a JSON string in {J_ ... J_End_}.
 // Calls:
 //  * UNESC_RETURN_BAD(int error_code) on error;
 //  * UNESC_PRODUCE_CHUNK(const char *chunk, const char *chunk_end) to produce a chunk;
 //  * UNESC_PRODUCE_1(int c) to produce a single byte.
-#define UNESC_TEMPLATE() \
-    if (unlikely(j == j_end || j[0] != '"')) { \
+#define UNESC_TEMPLATE(J_, J_End_) \
+    if (unlikely(J_ == J_End_ || J_[0] != '"')) { \
         UNESC_RETURN_BAD(1); \
     } \
-    PREEMPT_DECR(j_end); \
-    PREEMPT_INCR(j); \
+    PREEMPT_INCR(J_); \
+    if (unlikely(J_ == J_End_)) { \
+        UNESC_RETURN_BAD(1); \
+    } \
+    PREEMPT_DECR(J_End_); \
     for (;;) { \
-        const char *next_esc = PREEMPT_CALL(find_next_escape, j, j_end); \
-        UNESC_PRODUCE_CHUNK(j, next_esc); \
-        if (next_esc == j_end) { \
+        const char *next_esc = PREEMPT_CALL(find_next_escape, J_, J_End_); \
+        UNESC_PRODUCE_CHUNK(J_, next_esc); \
+        if (next_esc == J_End_) { \
             break; \
         } \
         PREEMPT_INCR(next_esc); \
-        if (unlikely(next_esc == j_end)) { \
+        if (unlikely(next_esc == J_End_)) { \
             UNESC_RETURN_BAD(2); \
         } \
         char c = *next_esc; \
         if (c == 'u') { \
             PREEMPT_INCR(next_esc); \
-            if (unlikely(j_end - next_esc < 4)) { \
+            if (unlikely(J_End_ - next_esc < 4)) { \
                 return -1; \
             } \
             int res = parse_hex_escape(next_esc); \
@@ -647,14 +650,14 @@ bad:
                 UNESC_PRODUCE_1(0x80 | ((res >> 6) & 63)); \
                 UNESC_PRODUCE_1(0x80 | (res & 63)); \
             } \
-            j = next_esc + 4; \
+            J_ = next_esc + 4; \
         } else { \
             int res = unesc_single(c); \
             if (unlikely(res < 0)) { \
                 UNESC_RETURN_BAD(4); \
             } \
             UNESC_PRODUCE_1(res); \
-            j = next_esc + 1; \
+            J_ = next_esc + 1; \
         } \
     }
 
@@ -691,7 +694,7 @@ PREEMPT_DECLF(
 #define UNESC_PRODUCE_1(C_) (*cur++ = (C_))
 #define UNESC_RETURN_BAD(N_) return -1
 
-    UNESC_TEMPLATE()
+    UNESC_TEMPLATE(j, j_end)
 
 #undef UNESC_PRODUCE_CHUNK
 #undef UNESC_PRODUCE_1
@@ -743,7 +746,7 @@ PREEMPT_DECLF(
     } while (0)
 #define UNESC_RETURN_BAD(N_) return -1
 
-    UNESC_TEMPLATE()
+    UNESC_TEMPLATE(j, j_end)
 
 #undef UNESC_PRODUCE_CHUNK
 #undef UNESC_PRODUCE_1
@@ -784,7 +787,7 @@ PREEMPT_DECLF(
 
 #define UNESC_RETURN_BAD(N_) return -1
 
-    UNESC_TEMPLATE()
+    UNESC_TEMPLATE(j, j_end)
 
 #undef UNESC_PRODUCE_CHUNK
 #undef UNESC_PRODUCE_1
