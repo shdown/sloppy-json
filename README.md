@@ -91,6 +91,19 @@ Exact and sparse flags
 
   Set the sparse flag for variable `VAR` to `YESNO`.
 
+By default, list parsing (resolving `VAR[0]`) is performed by creating an array of size
+(`max_index` + 1) on the stack.
+This is the “dense” approach; the “sparse” alternative is to create an array of size
+equal to the number of indices.
+The sparse flag controls whether the “sparse” approach is used; by default, it is off.
+You can set it per-variable.
+
+By default, matching of dict keys is “sloppy”, which means it can’t match JSON string with escapes.
+For example, `"\u004b\u0065\u0079"` will not match the string `"Key"`.
+The alternative approach, which we call “exact”, is to handle JSON escapes correctly, which is slower.
+The exact flag controls whether the “exact” approach is used; by default, it is off.
+You can set it globally or per-variable.
+
 Preemption
 ---
 
