@@ -98,7 +98,7 @@ equal to the number of indices.
 The sparse flag controls whether the “sparse” approach is used; by default, it is off.
 You can set it per-variable.
 
-By default, matching of dict keys is “sloppy”, which means it can’t match JSON string with escapes.
+By default, matching of dict keys is “sloppy”, which means it can’t match JSON strings with escapes.
 For example, `"\u004b\u0065\u0079"` will not match the string `"Key"`.
 The alternative approach, which we call “exact”, is to handle JSON escapes correctly, which is slower.
 The exact flag controls whether the “exact” approach is used; by default, it is off.
