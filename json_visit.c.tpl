@@ -634,7 +634,7 @@ bad:
         if (c == 'u') { \
             PREEMPT_INCR(next_esc); \
             if (unlikely(J_End_ - next_esc < 4)) { \
-                return -1; \
+                UNESC_RETURN_BAD(2); \
             } \
             int res = parse_hex_escape(next_esc); \
             if (unlikely(res < 0)) { \

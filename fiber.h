@@ -8,7 +8,7 @@
 // To start a fiber or continue its execution, you need to call 'fiber_kick().'
 // The code of the fiber will then start executing immediately after and until
 // either the fiber yields or returns from its main function. In both cases,
-// the control returns 'fiber_kick()'.
+// the control returns from 'fiber_kick()'.
 //
 // It is undefined behaviour to kick a fiber that is already "dead" (has
 // returned from its main function). Therefore, you need to check the state
